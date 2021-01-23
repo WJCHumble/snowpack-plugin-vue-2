@@ -1,4 +1,3 @@
-const fs = require("fs");
 const hashsum = require("hash-sum");
 const compiler = require("vue-template-compiler");
 const { compileTemplate, compileStyleAsync } = require('@vue/component-compiler-utils');
@@ -23,14 +22,18 @@ module.exports = function plugin(config, pluginOptions) {
       } else {
         jsResult += `const defaultExport = {};`;
       }
-
-      let cssResult;
+      let cssResult, hasScoped = false;
       for (const stylePart of descriptor.styles) {
+        // is scoped css
+        if (stylePart.scoped) {
+          hasScoped = true
+        }
+
         const styleCode = await compileStyleAsync({
           filename: filePath,
           source: stylePart.content,
-          id: `data-v-${id}`,
-          scoped: stylePart.scoped != null,
+          id: hasScoped ? `data-v-${id}` : "",
+          scoped: hasScoped,
           modules: stylePart.module != null,
           preprocessLang: stylePart.lang,
           // preprocessCustomRequire: (id: string) => require(resolve(root, id))
@@ -53,6 +56,11 @@ module.exports = function plugin(config, pluginOptions) {
         if (templateCode.errors && templateCode.errors.length > 0) {
           console.error(JSON.stringify(templateCode.errors));
         }
+
+        if (hasScoped) {
+          jsResult += `\ndefaultExport._scopeId = "data-v-${id}"\n`
+        }
+        
         jsResult += `\n${templateCode.code}\n`;
         jsResult += `\ndefaultExport.render = render`;
         jsResult += `\nexport default defaultExport`;
