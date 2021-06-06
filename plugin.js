@@ -1,13 +1,19 @@
+const fs = require('fs')
 const hashsum = require("hash-sum");
 const compiler = require("vue-template-compiler");
 const { compileTemplate, compileStyleAsync } = require('@vue/component-compiler-utils');
+const { esbuildCompile } = require('./script-compilers')
 
 module.exports = function plugin(config, pluginOptions) {
   return {
-    defaultBuildScript: "build:vue",
-    async build({ contents, filePath }) {
+    resolve: {
+      input: ['.vue'],
+      output: ['.js', '.css']
+    },
+    async load({ filePath }) {
+      const fileContents = await fs.promises.readFile(filePath, 'utf-8');
       const id = hashsum(filePath);
-      const { errors, ...descriptor } = compiler.parseComponent(contents);
+      const { errors, ...descriptor } = compiler.parseComponent(fileContents);
 
       if (errors && errors.length > 0) {
         console.error(JSON.stringify(errors));
@@ -63,10 +69,14 @@ module.exports = function plugin(config, pluginOptions) {
         
         jsResult += `\n${templateCode.code}\n`;
         jsResult += `\ndefaultExport.render = render`;
+        jsResult += `\ndefaultExport.staticRenderFns = staticRenderFns`;
         jsResult += `\nexport default defaultExport`;
       }
 
-      return { result: jsResult, resources: { css: cssResult } };
+      return {
+        '.js': esbuildCompile(jsResult, 'jsx'),
+        '.css': cssResult,
+      };
     },
   };
 };
