@@ -63,6 +63,7 @@ module.exports = function plugin(config, pluginOptions) {
         
         jsResult += `\n${templateCode.code}\n`;
         jsResult += `\ndefaultExport.render = render`;
+        jsResult += `\ndefaultExport.staticRenderFns = staticRenderFns`;
         jsResult += `\nexport default defaultExport`;
       }
 
